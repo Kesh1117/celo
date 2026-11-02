@@ -10,9 +10,11 @@ import os
 import shutil
 import tempfile
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = (
-    r"C:\Program Files\Tesseract-OCR\tesseract.exe"
-)
+
+if os.name == "nt":
+    pytesseract.pytesseract.tesseract_cmd = (
+        r"C:\Program Files\Tesseract-OCR\tesseract.exe"
+    )
 
 app = FastAPI(title="MediaHub AI API")
 
