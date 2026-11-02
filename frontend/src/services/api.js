@@ -1,5 +1,5 @@
 
-const API_URL = "http://127.0.0.1:8000";
+const API_URL = "https://celo-hy32.onrender.com";
 
 export async function checkBackend() {
   const response = await fetch(`${API_URL}/health`);
