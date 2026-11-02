@@ -1,8 +1,8 @@
 fastapi
 uvicorn[standard]
 python-multipart
-openai-whisper
 sumy
 nltk
 pytesseract
 Pillow
+groq

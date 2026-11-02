@@ -1,3 +1,4 @@
+import os
 from fastapi import Body
 from sumy.parsers.plaintext import PlaintextParser
 from sumy.nlp.tokenizers import Tokenizer
@@ -5,8 +6,7 @@ from sumy.summarizers.lex_rank import LexRankSummarizer
 from fastapi import FastAPI, UploadFile, File, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import Request
-import whisper
-import os
+from groq import Groq
 import shutil
 import tempfile
 import pytesseract
@@ -27,7 +27,11 @@ app.add_middleware(
 )
 
 # Load Whisper once when the backend starts
-model = whisper.load_model("base")
+model = None
+
+if not os.getenv("RENDER"):
+    import whisper
+    model = whisper.load_model("base")
 
 @app.get("/")
 def home():
@@ -43,7 +47,8 @@ def health():
 
 @app.post("/transcribe")
 async def transcribe_audio(file: UploadFile = File(...)):
-    max_size = 100 * 1024 * 1024
+    is_render = bool(os.getenv("RENDER"))
+    max_size = 25 * 1024 * 1024 if is_render else 100 * 1024 * 1024
     total_size = 0
 
     allowed_extensions = {
@@ -78,16 +83,44 @@ async def transcribe_audio(file: UploadFile = File(...)):
                 if total_size > max_size:
                     raise HTTPException(
                         status_code=413,
-                        detail="File too large. Maximum allowed size is 100 MB."
+                        detail="File is too large."
                     )
 
                 temp_file.write(chunk)
 
-        result = model.transcribe(temp_path)
+        if is_render:
+            api_key = os.getenv("GROQ_API_KEY")
+
+            if not api_key:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Transcription service is not configured."
+                )
+
+            client = Groq(api_key=api_key)
+
+            with open(temp_path, "rb") as audio_file:
+                result = client.audio.transcriptions.create(
+                    file=(file.filename or f"audio{extension}", audio_file),
+                    model="whisper-large-v3-turbo",
+                    response_format="json"
+                )
+
+            transcript = result.text
+
+        else:
+            if model is None:
+                raise HTTPException(
+                    status_code=503,
+                    detail="Local Whisper model is not available."
+                )
+
+            result = model.transcribe(temp_path)
+            transcript = result["text"]
 
         return {
             "filename": file.filename,
-            "transcript": result["text"]
+            "transcript": transcript
         }
 
     except HTTPException:
