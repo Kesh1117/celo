@@ -18,13 +18,18 @@ if os.name == "nt":
 
 app = FastAPI(title="MediaHub AI API")
 
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173"],
+    allow_origins=[
+        "http://localhost:5173",
+        "https://celo-hy32.onrender.com",
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
 
 # Load Whisper once when the backend starts
 model = None
